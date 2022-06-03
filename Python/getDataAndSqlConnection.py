@@ -3,6 +3,7 @@ import pandas as pd #Librairie de gestion de tableau
 import mysql.connector
 import sys
 
+
 try:
         connexion = mysql.connector.connect(
         # host="127.0.0.1",# host="54.37.9.75",
