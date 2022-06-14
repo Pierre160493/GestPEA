@@ -5,7 +5,7 @@
 import logging
 import sys
 logging.basicConfig(stream=sys.stderr)
-sys.path.insert(0, '/home/pierre/GestPEA/Python/')
+sys.path.insert(0, '/home/pierre/GestPEA/PythonApi/')
 from main import app as application
 #from FlaskApi_11 import app as application
 #from FlaskApiSimple_11_test import app as application

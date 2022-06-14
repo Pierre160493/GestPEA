@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#### Code pour que le serveur (apache2) puisse executer les scripts en python
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 import random
