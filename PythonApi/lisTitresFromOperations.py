@@ -21,21 +21,21 @@ class clsOperation: #Classe d'une opération
         self.strCommentaire = operation["strCommentaire"] #Commentaire éventuel concernant cette opération
 #######################################################################################################################
 
-##### Récupération de la liste des opérations avec le fichier .csv de référence
 try:
-    lisOperationsCSV = pandas.read_csv('/home/pierre/GestPEA/lisOperations.csv',
-        #names=('intNumero','datDate','strType','intNombre','strNom','douMontant'),
-        sep=';')
+    # lisOperationsCSV = pandas.read_csv('/home/pierre/GestPEA/lisOperations.csv',sep=';',dtype=str,na_filter=False)
+    lisOperationsCSV = pandas.read_csv('/home/pierre/GestPEA/lisOperations.csv',sep=';',na_filter=True,
+        usecols = ['intNumero','datDate','strType','intNombre','strNom','douMontant','strCommentaires','booIgnore'],
+        dtype={'intNumero':str,'datDate':str,'strType':str,'intNombre':str,'strNom':str,'douMontant':str,'strCommentaires':str,'booIgnore':str})
 except:
     print("ERROR: Cannot open the csv file containing the list of the operations")
-# print(lisOperationsCSV)
+lisOperationsCSV.fillna('NULL', inplace=True)
+print(lisOperationsCSV)
 
 ##### Connexion a la base de données SQL
 try:
     sqlConnector = mysql.connector.connect(host='localhost',user='pierre',database='gestpea_test',password='Mroucky_93')
 except:
     print("ERROR: Cannot open mySQL database")
-# print(sqlConnector)
 
 sqlCursor = sqlConnector.cursor(buffered = True)
 
@@ -44,59 +44,48 @@ sqlCursor.execute('DROP TABLE IF EXISTS lisOperations')
 
 ##### Création de la table de la liste des opérations si elle n'existe pas
 sqlCursor.execute('''CREATE TABLE IF NOT EXISTS lisOperations (
-    intNumero int unsigned NOT NULL AUTO_INCREMENT,
+    intNumero int unsigned NOT NULL,
     datDate datetime NOT NULL,
     strType varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
     intNombre int unsigned DEFAULT NULL,
     strNom varchar(50) DEFAULT NULL,
     douMontant double NOT NULL,
     strCommentaires varchar(255) DEFAULT NULL,
+    booIgnore tinyint(1) NOT NULL DEFAULT 0,
 PRIMARY KEY (intNumero))
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 ''')
 
-##### Test simplifié
-# sqlCursor.execute('''
-#     CREATE TABLE IF NOT EXISTS lisOperations (
-#         intNumero int unsigned NOT NULL AUTO_INCREMENT,
-#         strCommentaires varchar(255) DEFAULT NULL,
-#     PRIMARY KEY (intNumero)
-# ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-# ''')
-
 ##### Récupération du numero de la dernière opération de la table
-intLastOperationInSQL = sqlCursor.execute('''
-    SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;
-''')
-if intLastOperationInSQL is None : intLastOperationInSQL = 0
+# sqlCursor.execute('SELECT intNumero FROM lisOperations ORDER BY intNumero DESC LIMIT 1;')
+# intLastOperationInSQL = sqlCursor.fetchone()[0]
+# if intLastOperationInSQL is None : intLastOperationInSQL = 0
+intLastOperationInSQL = 0
 
 ##### Récupération du numero de la derniere opération du fichier .csv
-intLastOperationInCSV = lisOperationsCSV['intNumero'].iloc[-1]
+intLastOperationInCSV = int(lisOperationsCSV['intNumero'].iloc[-1])
 # print(intLastOperationInCSV)
 
-# sql = "INSERT INTO lisOperations VALUES (%s,%s,%s,%s,%s,%s,%s)"
-# while intLastOperationInSQL <= intLastOperationInCSV:
-#     val = ("1","2018-08-28 00:00:00.000","Achat","4","AIRBUS","437.59","")
-#     sqlCursor.execute(sql, val)
+# sqlCursor.execute('''INSERT INTO lisOperations VALUES (1,'2018-08-28','Achat',4,'AIRBUS',437.59,NULL)''')
+# sqlCursor.execute('''INSERT INTO lisOperations VALUES (1,STR_TO_DATE('28/08/2018 00:00','%d/%m/%Y %H:%i'),'Achat','NULL','AIRBUS',437.59,NULL,1)''')
+# sqlConnector.commit()
+##### Facon plus propre de faire
+# sql = "INSERT INTO lisOperations VALUES (%s,STR_TO_DATE(%s,'%d/%m/%Y %H:%i'),%s,%s,%s,%s,%s,%s)"
+# val = []
+# # val.append(("1","28/08/2018 00:00","Achat","4","AIRBUS","437.59",""))
+# while intLastOperationInSQL < intLastOperationInCSV:
+#     val.append(tuple(lisOperationsCSV.iloc[intLastOperationInSQL]))
+#     intLastOperationInSQL += 1
+# sqlCursor.executemany(sql, val)
+# sqlConnector.commit()
 
-sql = "INSERT INTO lisOperations VALUES (%s,%s,%s,%s,%s,%s,%s)"
-val = []
-# val.append(("1","2018-08-28 00:00:00.000","Achat","4","AIRBUS","437.59",""))
-# val.append(("2","2018-08-28 00:00:00.000","Achat","4","AIRBUS","437.59",""))
-sqlCursor.executemany(sql, val)
-while intLastOperationInSQL <= intLastOperationInCSV:
-    val.append(("1","2018-08-28 00:00:00.000","Achat","4","AIRBUS","437.59",""))
+##### Facon un peu plus sale
+while intLastOperationInSQL < intLastOperationInCSV:
+    row = lisOperationsCSV.iloc[intLastOperationInSQL]
+    sql = "INSERT INTO lisOperations VALUES ("+row['intNumero']+",STR_TO_DATE('"+row['datDate']+"','%d/%m/%Y %H:%i'),'"+row['strType']+"',"+row['intNombre']+",'"+row['strNom']+"',"+row['douMontant']+","+row['strCommentaires']+","+row['booIgnore']+")"
+    sqlCursor.execute(sql)
     intLastOperationInSQL += 1
-sqlCursor.executemany(sql, val)
 sqlConnector.commit()
-
-##### Test simplifié
-# sql = 'INSERT INTO lisOperations (intNumero, strCommentaires) VALUES(%s, %s)'
-# val = (1,'test')
-# sqlCursor.execute(sql, val)
-
-sqlConnector.commit()
-print("OK")
 
 ##### Gestion de la liste des opérations pour en extraire la liste des titres
 # lisTitres = {"lisTitres": []} #Initialisation de la liste

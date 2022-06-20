@@ -5,17 +5,17 @@ import random
 
 app = Flask(__name__)
 
-#### Connexion a la base de données SQL
+##### Connexion a la base de données SQL
 try:
     sqlConnector = mysql.connector.connect(host='localhost',user='pierre',database='gestpea',password='Mroucky_93')
 except:
     print("ERROR: Cannot open mySQL database")
 sqlCursor = sqlConnector.cursor(buffered = True)
 
-#### Suppression de la table (pour etre sur de recommencer à 0)
-# sqlCursor.execute('DROP TABLE IF EXISTS lisOperations')
+##### Suppression de la table (pour etre sur de recommencer à 0)
+sqlCursor.execute('DROP TABLE IF EXISTS lisOperations')
 
-#### Création de la table de la liste des opérations si elle n'existe pas
+##### Création de la table de la liste des opérations si elle n'existe pas
 sqlCursor.execute('''CREATE TABLE IF NOT EXISTS lisOperations (
     intNumero int unsigned NOT NULL,
     datDate datetime NOT NULL,
@@ -55,20 +55,12 @@ operation_put_args.add_argument("Numero", type=int, help="Numero de l'opération
 class apiOperation(Resource):
 #### Récuperation d'une opération
     def get(self, intNumeroOperation=0):
-        if intNumeroOperation == -1:
-#### Récupération du numero de la dernière opération de la table
-            sqlRequete = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
-        else:
-#### Récupération du numero de la dernière opération de la table
-            sqlRequete = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
-
-        sqlCursor.execute(sqlRequete)
-        sqlResponse = sqlCursor.fetchall()
-        print(sqlResponse)
-
-        return random.choice(ai_quotes), 200
-        
-
+        if intNumeroOperation == 0:
+            return random.choice(ai_quotes), 200
+        for quote in ai_quotes:
+            if(quote["intNumeroOperation"] == intNumeroOperation):
+                return quote, 200
+        return "Quote not found", 404
 
 #### Rajout d'une opération
     def put(self, intNumeroOperation):
@@ -103,5 +95,5 @@ class apiOperation(Resource):
 
 api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<int:intNumeroOperation>")
 if __name__ == '__main__':
-    # app.run(debug=True)
-    app.run()
+    app.run(debug=True)
+    # app.run()
