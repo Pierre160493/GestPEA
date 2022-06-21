@@ -1,7 +1,9 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 import mysql.connector
-import random
+import datetime
+import json
+from clsOperation import clsOperation
 
 app = Flask(__name__)
 
@@ -54,20 +56,58 @@ operation_put_args.add_argument("Numero", type=int, help="Numero de l'opération
 ##### Classe de gestion des opérations
 class apiOperation(Resource):
 #### Récuperation d'une opération
-    def get(self, intNumeroOperation=0):
+    def get(self, strAPI):
+
+        intNumeroOperation = None
+        try:
+            intNumeroOperation = int(strAPI)
+        except:
+            if strAPI.lower() == "all":
+                sqlRequete = 'SELECT * FROM lisOperations;'
+            elif strAPI.lower() == "last":
+                intNumeroOperation = -1
+        #### Ajouter possibilité de retourner toutes les opérations d'un titre
+
         if intNumeroOperation == -1:
 #### Récupération du numero de la dernière opération de la table
             sqlRequete = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
-        else:
+        elif intNumeroOperation != None:
 #### Récupération du numero de la dernière opération de la table
             sqlRequete = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
 
+#### Execution de la requete
         sqlCursor.execute(sqlRequete)
         sqlResponse = sqlCursor.fetchall()
-        print(sqlResponse)
+#### Get all the operations from the sql query
+        lisOperations = [] #Liste des operations
+        for result in sqlResponse:
+            lisOperations.append(clsOperation(result))
+#### Transform to JSON to send it back
+        returnJSON = [] # Response that we want to send
+        for operation in lisOperations:
+            returnJSON.append(operation.getJSON())
+        return returnJSON,200
 
-        return random.choice(ai_quotes), 200
-        
+# #### Récuperation d'une opération
+#     def get(self, intNumeroOperation=0):
+#         if intNumeroOperation == -1:
+# #### Récupération du numero de la dernière opération de la table
+#             sqlRequete = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
+#         else:
+# #### Récupération du numero de la dernière opération de la table
+#             sqlRequete = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
+# #### Execution de la requete
+#         sqlCursor.execute(sqlRequete)
+#         sqlResponse = sqlCursor.fetchall()
+# #### Get all the operations from the sql query
+#         lisOperations = [] #Liste des operations
+#         for result in sqlResponse:
+#             lisOperations.append(clsOperation(result))
+# #### Transform to JSON to send it back
+#         returnJSON = [] # Response that we want to send
+#         for operation in lisOperations:
+#             returnJSON.append(operation.getJSON())
+#         return returnJSON,200
 
 
 #### Rajout d'une opération
@@ -101,7 +141,8 @@ class apiOperation(Resource):
         return f"Quote with id {intNumeroOperation} is deleted.", 200
 
 
-api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<int:intNumeroOperation>")
+# api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<int:intNumeroOperation>")
+api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<string:strAPI>")
 if __name__ == '__main__':
-    # app.run(debug=True)
-    app.run()
+    app.run(debug=True)
+    # app.run()
