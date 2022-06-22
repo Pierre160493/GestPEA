@@ -43,56 +43,34 @@ operation_put_args.add_argument("Numero", type=int, help="Numero de l'opération
 # operation_put_args.add_argument("Commentaires", type=str,help="Commentaires concernant l'opération")
 # operation_put_args.add_argument("Ignore", type=bool,help="Prise en compte ou pas de l'opération")
 
-##### Classe de gestion des opérations
+##### Operations API
 class apiOperation(Resource):
 #######################################################################################################################
 #######################################################################################################################
-#### Récuperation d'une opération
+#### GET an operation
     def get(self, strAPI= ""):
 
-        sqlRequest = 'SELECT * FROM lisOperations;'
-        intNumeroOperation = None
-        try:
+        sqlRequest = 'SELECT * FROM lisOperations;' # By default we return all the operations
+        intNumeroOperation = None # By default there is no specific number of operation to return
+        try: # We try to get an int number to return a specific number of operation
             intNumeroOperation = int(strAPI)
-        except:
+        except: # If it fails we check for the "last" keyword to return the last operation stored in the db
             if strAPI.lower() == "last":
                 intNumeroOperation = -1
-        #### Ajouter possibilité de retourner toutes les opérations d'un titre
-
-        if intNumeroOperation == -1:
-#### Récupération du numero de la dernière opération de la table
+            #### Add the possibility to get all the operations of a specific stock !!
+#### Handling of the sql request for specific cases to return specific number of operation
+        if intNumeroOperation == -1: # Then we want the last operation stored in the db
             sqlRequest = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
-        elif intNumeroOperation != None:
-#### Récupération du numero de la dernière opération de la table
+        elif intNumeroOperation != None: # Then we want a specific number of operation
             sqlRequest = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
 
-#### Execution de la requete
-        sqlCursor.execute(sqlRequest)
+        sqlCursor.execute(sqlRequest) # Execution of the sql request
 #### Get all the operations from the sql query
         sqlResult = [{sqlCursor.description[index][0]:column for index, column in enumerate(value)} for value in sqlCursor.fetchall()]
-#### Rewrite datetime in specific format
-        for operation in sqlResult:
+        for operation in sqlResult: # Rewrite datetime in specific format
             operation['datDate'] = operation['datDate'].strftime("%d/%m/%Y %H:%M:%S")
 
-        # lisOperations = [] #Liste des operations
-        # for result in sqlResponse:
-        #     print(result)
-        #     # print(result['intNumero'])
-        #     print("lala !")
-        #     lisOperations.append(clsOperation(result))
-        #     # lisOperations.append({'intNumero': result['intNumero'], 'datDate': result['datDate'], 'strType': result['strType']})
-        #     # lisOperations.append({'intNumero': result['intNumero'], 'strType': result['strType']})
-        # print(lisOperations[0])
-        # print("ici !!!")
-
-# #### Transform to JSON to send it back
-#         returnJSON = [] # Response that we want to send
-#         for operation in lisOperations:
-#             returnJSON.append(operation.getJSON())
-#         print(returnJSON)
-
-        return sqlResult,200
-        # return returnJSON,200
+        return sqlResult, 200 # Return the JSON result
 
 #######################################################################################################################
 #######################################################################################################################
