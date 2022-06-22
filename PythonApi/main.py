@@ -1,8 +1,7 @@
+from urllib import response
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 import mysql.connector
-import datetime
-import json
 from clsOperation import clsOperation
 
 app = Flask(__name__)
@@ -32,15 +31,6 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;''')
 
 api = Api(app)
 
-ai_quotes = [
-    {
-        "id": 0,
-        "author": "Kevin Kelly",
-        "quote": "The business plans of the next 10,000 startups are easy to forecast: " +
-                 "Take X and add AI." 
-    }
-]
-
 #### 
 operation_put_args = reqparse.RequestParser()
 # operation_put_args.add_argument("Numero", type=str, help="Numero de l'opération",location="json")
@@ -55,68 +45,66 @@ operation_put_args.add_argument("Numero", type=int, help="Numero de l'opération
 
 ##### Classe de gestion des opérations
 class apiOperation(Resource):
+#######################################################################################################################
+#######################################################################################################################
 #### Récuperation d'une opération
-    def get(self, strAPI):
+    def get(self, strAPI= ""):
 
+        sqlRequest = 'SELECT * FROM lisOperations;'
         intNumeroOperation = None
         try:
             intNumeroOperation = int(strAPI)
         except:
-            if strAPI.lower() == "all":
-                sqlRequete = 'SELECT * FROM lisOperations;'
-            elif strAPI.lower() == "last":
+            if strAPI.lower() == "last":
                 intNumeroOperation = -1
         #### Ajouter possibilité de retourner toutes les opérations d'un titre
 
         if intNumeroOperation == -1:
 #### Récupération du numero de la dernière opération de la table
-            sqlRequete = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
+            sqlRequest = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
         elif intNumeroOperation != None:
 #### Récupération du numero de la dernière opération de la table
-            sqlRequete = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
+            sqlRequest = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
 
 #### Execution de la requete
-        sqlCursor.execute(sqlRequete)
-        sqlResponse = sqlCursor.fetchall()
+        sqlCursor.execute(sqlRequest)
 #### Get all the operations from the sql query
-        lisOperations = [] #Liste des operations
-        for result in sqlResponse:
-            lisOperations.append(clsOperation(result))
-#### Transform to JSON to send it back
-        returnJSON = [] # Response that we want to send
-        for operation in lisOperations:
-            returnJSON.append(operation.getJSON())
-        return returnJSON,200
+        sqlResult = [{sqlCursor.description[index][0]:column for index, column in enumerate(value)} for value in sqlCursor.fetchall()]
+#### Rewrite datetime in specific format
+        for operation in sqlResult:
+            operation['datDate'] = operation['datDate'].strftime("%d/%m/%Y %H:%M:%S")
 
-# #### Récuperation d'une opération
-#     def get(self, intNumeroOperation=0):
-#         if intNumeroOperation == -1:
-# #### Récupération du numero de la dernière opération de la table
-#             sqlRequete = 'SELECT * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
-#         else:
-# #### Récupération du numero de la dernière opération de la table
-#             sqlRequete = 'SELECT * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
-# #### Execution de la requete
-#         sqlCursor.execute(sqlRequete)
-#         sqlResponse = sqlCursor.fetchall()
-# #### Get all the operations from the sql query
-#         lisOperations = [] #Liste des operations
-#         for result in sqlResponse:
-#             lisOperations.append(clsOperation(result))
+        # lisOperations = [] #Liste des operations
+        # for result in sqlResponse:
+        #     print(result)
+        #     # print(result['intNumero'])
+        #     print("lala !")
+        #     lisOperations.append(clsOperation(result))
+        #     # lisOperations.append({'intNumero': result['intNumero'], 'datDate': result['datDate'], 'strType': result['strType']})
+        #     # lisOperations.append({'intNumero': result['intNumero'], 'strType': result['strType']})
+        # print(lisOperations[0])
+        # print("ici !!!")
+
 # #### Transform to JSON to send it back
 #         returnJSON = [] # Response that we want to send
 #         for operation in lisOperations:
 #             returnJSON.append(operation.getJSON())
-#         return returnJSON,200
+#         print(returnJSON)
 
+        return sqlResult,200
+        # return returnJSON,200
 
+#######################################################################################################################
+#######################################################################################################################
 #### Rajout d'une opération
-    def put(self, intNumeroOperation):
-        print("Numero trouvé ici: "+str(intNumeroOperation))
+    def put(self, strAPI= ""):
+        print(strAPI)
         args = operation_put_args.parse_args()
         print("Print ici:"+str(args))
-        return {"Reponse":"Numero Operation= "+str(intNumeroOperation)+" XXX NumeroInput= "+str(args["Numero"])}, 201
+        return {"Reponse":"NumeroInput= "+str(args["Numero"])}, 201
 
+#######################################################################################################################
+#######################################################################################################################
 #### Modification d'une opération
     def post(self, intNumeroOperation):
         parser = reqparse.RequestParser()
@@ -134,15 +122,19 @@ class apiOperation(Resource):
         ai_quotes.append(quote)
         return quote, 201
 
+#######################################################################################################################
+#######################################################################################################################
 #### Suppression d'une opération
     def delete(self, intNumeroOperation):
         global ai_quotes
         ai_quotes = [qoute for qoute in ai_quotes if qoute["intNumeroOperation"] != intNumeroOperation]
         return f"Quote with id {intNumeroOperation} is deleted.", 200
 
+#######################################################################################################################
+#######################################################################################################################
+#### Chemin de l'API (depuis: 54.37.9.75/)
+api.add_resource(apiOperation, "/operation", "/operation/", "/operation/<string:strAPI>")
 
-# api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<int:intNumeroOperation>")
-api.add_resource(apiOperation, "/", "/operation", "/operation/", "/operation/<string:strAPI>")
 if __name__ == '__main__':
     app.run(debug=True)
     # app.run()
