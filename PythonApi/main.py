@@ -1,3 +1,4 @@
+from datetime import datetime
 from urllib import response
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
@@ -31,31 +32,19 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;''')
 
 api = Api(app)
 
-#### 
-operation_put_args = reqparse.RequestParser()
-# operation_put_args.add_argument("Numero", type=str, help="Numero de l'opération",location="json")
-operation_put_args.add_argument("Numero", type=int, help="Numero de l'opération",location="json")
-# operation_put_args.add_argument("Date", type=date,help="Date de l'opération",required=True)
-# operation_put_args.add_argument("Type", type=str,help="Type de l'opération",required=True)
-# operation_put_args.add_argument("Nombre", type=int,help="Nombre de titres concernés par l'opération")
-# operation_put_args.add_argument("Nom", type=int,help="Nom du titre de l'opération",required=True)
-# operation_put_args.add_argument("Montant", type=double,help="Montant de l'opération",required=True)
-# operation_put_args.add_argument("Commentaires", type=str,help="Commentaires concernant l'opération")
-# operation_put_args.add_argument("Ignore", type=bool,help="Prise en compte ou pas de l'opération")
-
-##### Operations API
+##### Operations API (GET and PUT)
 class apiOperation(Resource):
 #######################################################################################################################
 #######################################################################################################################
 #### GET an operation
-    def get(self, strAPI= ""):
+    def get(self, strInputAPI= ""):
 
         sqlRequest = 'SELECT * FROM lisOperations;' # By default we return all the operations
         intNumeroOperation = None # By default there is no specific number of operation to return
         try: # We try to get an int number to return a specific number of operation
-            intNumeroOperation = int(strAPI)
+            intNumeroOperation = int(strInputAPI)
         except: # If it fails we check for the "last" keyword to return the last operation stored in the db
-            if strAPI.lower() == "last":
+            if strInputAPI.lower() == "last":
                 intNumeroOperation = -1
             #### Add the possibility to get all the operations of a specific stock !!
 #### Handling of the sql request for specific cases to return specific number of operation
@@ -74,44 +63,68 @@ class apiOperation(Resource):
 
 #######################################################################################################################
 #######################################################################################################################
-#### Rajout d'une opération
-    def put(self, strAPI= ""):
-        print(strAPI)
-        args = operation_put_args.parse_args()
-        print("Print ici:"+str(args))
-        return {"Reponse":"NumeroInput= "+str(args["Numero"])}, 201
+#### PUT an operation
+    def put(self):
 
-#######################################################################################################################
-#######################################################################################################################
-#### Modification d'une opération
-    def post(self, intNumeroOperation):
-        parser = reqparse.RequestParser()
-        parser.add_argument("author")
-        parser.add_argument("quote")
-        params = parser.parse_args()
-        for quote in ai_quotes:
-            if(intNumeroOperation == quote["intNumeroOperation"]):
-                return f"Quote with id {intNumeroOperation} already exists", 400
-        quote = {
-            "id": int(intNumeroOperation),
-            "author": params["author"],
-            "quote": params["quote"]
-        }
-        ai_quotes.append(quote)
-        return quote, 201
+        putInputArguments = reqparse.RequestParser() # Handling of the PUT arguments (in the Body)
+        putInputArguments.add_argument("lisOperations",type=dict,action="append") # Adding one type of entry
+        putInputArguments = putInputArguments.parse_args()
+        for operation in putInputArguments['lisOperations']:
+            for dictKey in operation:
+                if operation[dictKey] is None : operation[dictKey] = "NULL" # We want none to be NULL
+                operation[dictKey] = str(operation[dictKey]) # And all values must be strings
+            sqlRequest = "INSERT INTO lisOperations VALUES ("+operation['intNumero']+",STR_TO_DATE('"+operation['datDate']+"','%d/%m/%Y %H:%i:%S'),'"+operation['strType']+"',"+operation['intNombre']+",'"+operation['strNom']+"',"+operation['douMontant']+","+operation['strCommentaires']+","+operation['booIgnore']+")"
+            print(sqlRequest)
+            sqlCursor.execute(sqlRequest)
+
+        sqlConnector.commit()
+
+        return {"Reponse":"OK"}, 201
+
+# #######################################################################################################################
+# #######################################################################################################################
+# #### Modification d'une opération
+#     def post(self, intNumeroOperation):
+#         parser = reqparse.RequestParser()
+#         parser.add_argument("author")
+#         parser.add_argument("quote")
+#         params = parser.parse_args()
+#         for quote in ai_quotes:
+#             if(intNumeroOperation == quote["intNumeroOperation"]):
+#                 return f"Quote with id {intNumeroOperation} already exists", 400
+#         quote = {
+#             "id": int(intNumeroOperation),
+#             "author": params["author"],
+#             "quote": params["quote"]
+#         }
+#         ai_quotes.append(quote)
+#         return quote, 201
 
 #######################################################################################################################
 #######################################################################################################################
 #### Suppression d'une opération
-    def delete(self, intNumeroOperation):
-        global ai_quotes
-        ai_quotes = [qoute for qoute in ai_quotes if qoute["intNumeroOperation"] != intNumeroOperation]
-        return f"Quote with id {intNumeroOperation} is deleted.", 200
+    def delete(self, strInputAPI= ""):
+
+        sqlRequest = "DELETE FROM lisOperations;"
+        try: # We try to get an int number to return a specific number of operation
+            intNumeroOperation = int(strInputAPI)
+        except: # If it fails we check for the "last" keyword to return the last operation stored in the db
+            if strInputAPI.lower() == "last":
+                intNumeroOperation = -1
+            #### Add the possibility to get all the operations of a specific stock !
+#### Handling of the sql request for specific cases to return specific number of operation
+        if intNumeroOperation == -1: # Then we want the last operation stored in the db
+            sqlRequest = 'DELETE * FROM lisOperations ORDER BY intNumero DESC LIMIT 1;'
+        elif intNumeroOperation != None: # Then we want a specific number of operation
+            sqlRequest = 'DELETE * FROM lisOperations WHERE intNumero = '+ str(intNumeroOperation) +';'
+
+        sqlCursor.execute(sqlRequest) # Execution of the sql request
+        return {"Reponse":"OK"}, 200
 
 #######################################################################################################################
 #######################################################################################################################
 #### Chemin de l'API (depuis: 54.37.9.75/)
-api.add_resource(apiOperation, "/operation", "/operation/", "/operation/<string:strAPI>")
+api.add_resource(apiOperation, "/operation", "/operation/", "/operation/<string:strInputAPI>")
 
 if __name__ == '__main__':
     app.run(debug=True)

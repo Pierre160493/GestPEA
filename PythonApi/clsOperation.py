@@ -29,3 +29,13 @@ class clsOperation: #Classe d'une opération
     #     self.douMontant = operation["douMontant"] #Montant de l'opération
     #     self.strCommentaire = operation["strCommentaire"] #Commentaire éventuel concernant cette opération
     #     self.booIgnore = operation["booIgnore"] #Commentaire éventuel concernant cette opération
+
+def lisOperationsFromSqlRequest(sqlCursor, sqlRequest):
+    lisOperations = []
+    sqlCursor.execute(sqlRequest) # Execution of the sql request
+#### Get all the operations from the sql query
+    sqlResult = [{sqlCursor.description[index][0]:column for index, column in enumerate(value)} for value in sqlCursor.fetchall()]
+    for operation in sqlResult: # Rewrite datetime in specific format
+        operation['datDate'] = operation['datDate'].strftime("%d/%m/%Y %H:%M:%S")
+
+    return lisOperations
